@@ -31,15 +31,25 @@ jobs:
           git clone --depth 1 --branch v2022.01 \
             https://github.com/u-boot/u-boot.git uboot
 
-      - name: Build A23 U-Boot with SPL
+      - name: Build A23 U-Boot with SPL (hardcoded bootcmd, no keyboard/distro-scan)
         run: |
           cd uboot
           make q8_a23_tablet_800x480_defconfig
+
+          # CONFIG_BOOTCOMMAND 是 C 宏(#ifndef ... #define 在 include/config_distro_bootcmd.h)，
+          # 不是 Kconfig 选项，写 .config 无效。必须 patch 源码。
+          # 写死 bootcmd：直接从 FAT p1 加载 dtb+zImage 并 bootz，绕过 distro boot 扫描
+          # 键盘不可用、无法现场确认 SD 卡是 mmc 0 还是 1，所以两个设备号+分区号都探测
+          # bootargs 带 init=/bin/bash 直接进 root shell（rootfs 密码锁定无法登录）
+          # 用仓库里的独立脚本 patch（避开 YAML 缩进 / shell 转义问题）
+          python3 ../build-repo/patch_bootcmd.py
+          echo "=== patch 后确认 ==="
+          grep -n 'define CONFIG_BOOTCOMMAND' include/config_distro_bootcmd.h | head -2
           make -j$(nproc) CROSS_COMPILE=arm-linux-gnueabihf-
           echo "=== U-Boot 产物 ==="
           ls -lh u-boot-sunxi-with-spl.bin
           echo "=== defconfig 确认 ==="
-          grep -E 'CONFIG_(MACH_SUN8I_A23|DRAM_CLK|DEFAULT_DEVICE_TREE|VIDEO_LCD_MODE)=' .config
+          grep -E 'CONFIG_(MACH_SUN8I_A23|DRAM_CLK|DEFAULT_DEVICE_TREE|VIDEO_LCD_MODE|BOOTCOMMAND)=' .config
 
       # ---------- Kernel (Lima GPU + framebuffer console) ----------
       - name: Fetch mainline kernel v6.1 (shallow)
