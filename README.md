@@ -17,8 +17,12 @@
 
 push 到 `main` 或在 Actions 页手动点 "Run workflow"。编译产物在 Artifacts：
 
+- `u-boot-sunxi-with-spl.bin` — **A23 专用 U-Boot**（用 `q8_a23_tablet_800x480_defconfig`，
+  正确的 A23 DRAM 时序 + 800×480 LCD 初始化）。关键：之前用的 A33 U-Boot 会导致
+  SPL 初始化 DRAM 失败、跑飞、黑屏。
 - `zImage` — 内核
-- `sun8i-a23-q8-tablet.dtb` — 设备树
+- `sun8i-a23-q8-tablet.dtb` — 设备树（用 **U-Boot 生成的版本**，含正确的
+  simple-framebuffer 信息，屏幕 console 才能显示）
 - `boot.scr` — U-Boot 启动脚本
 - `kernel-final.config` — olddefconfig 补齐后的最终配置
 

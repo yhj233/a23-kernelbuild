@@ -1,4 +1,4 @@
-name: Build A23 mainline kernel (Lima GPU + FB console)
+name: Build A23 mainline kernel + U-Boot (Lima GPU + FB console)
 
 on:
   workflow_dispatch:
@@ -25,6 +25,23 @@ jobs:
             bc bison flex libssl-dev libelf-dev \
             u-boot-tools device-tree-compiler
 
+      # ---------- U-Boot (A23 Q8 800x480, 正确的 DRAM/LCD 初始化) ----------
+      - name: Fetch U-Boot v2022.01 (shallow)
+        run: |
+          git clone --depth 1 --branch v2022.01 \
+            https://github.com/u-boot/u-boot.git uboot
+
+      - name: Build A23 U-Boot with SPL
+        run: |
+          cd uboot
+          make q8_a23_tablet_800x480_defconfig
+          make -j$(nproc) CROSS_COMPILE=arm-linux-gnueabihf-
+          echo "=== U-Boot 产物 ==="
+          ls -lh u-boot-sunxi-with-spl.bin
+          echo "=== defconfig 确认 ==="
+          grep -E 'CONFIG_(MACH_SUN8I_A23|DRAM_CLK|DEFAULT_DEVICE_TREE|VIDEO_LCD_MODE)=' .config
+
+      # ---------- Kernel (Lima GPU + framebuffer console) ----------
       - name: Fetch mainline kernel v6.1 (shallow)
         run: |
           git clone --depth 1 --branch v6.1 \
@@ -35,37 +52,41 @@ jobs:
         run: |
           cp build-repo/kernel.config linux/.config
           cd linux
-          # 让新旧内核配置差异用默认值补齐，不交互式提问
           make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
           echo "=== 关键选项确认 ==="
           grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|VT_CONSOLE)=' .config || true
 
-      - name: Build zImage + A23 dtb
+      - name: Build zImage
         run: |
           cd linux
           make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage
-          make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- \
-            sun8i-a23-q8-tablet.dtb
+
+      # ---------- DTB: 用 U-Boot 生成的版本 (含 simple-framebuffer, 作者推荐) ----------
+      - name: Use U-Boot-generated DTB
+        run: |
+          mkdir -p artifacts
+          cp uboot/arch/arm/dts/sun8i-a23-q8-tablet.dtb artifacts/
+          echo "=== dtb 里的 framebuffer 节点 ==="
+          strings artifacts/sun8i-a23-q8-tablet.dtb | grep -iE 'framebuffer|simple-fb' || echo "(U-Boot dtb 运行时动态加 simple-framebuffer)"
 
       - name: Generate boot.scr
         run: |
-          mkimage -C none -A arm -T script -d build-repo/boot.cmd out-boot.scr
-          mv out-boot.scr boot.scr
+          mkimage -C none -A arm -T script -d build-repo/boot.cmd artifacts/boot.scr
 
       - name: Stage artifacts
         run: |
-          mkdir -p artifacts
           cp linux/arch/arm/boot/zImage artifacts/
-          cp linux/arch/arm/boot/dts/sun8i-a23-q8-tablet.dtb artifacts/
-          cp boot.scr artifacts/
+          cp uboot/u-boot-sunxi-with-spl.bin artifacts/
           cp linux/.config artifacts/kernel-final.config
           ls -lh artifacts/
-          echo "=== zImage magic (期望 1f8b08 @ 0xe988 附近) ==="
-          xxd -l 64 artifacts/zImage
+          echo "=== zImage magic ==="
+          xxd -l 40 artifacts/zImage
+          echo "=== u-boot magic (期望 eGON.BT0) ==="
+          xxd -s 32 -l 16 artifacts/u-boot-sunxi-with-spl.bin
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: a23-kernel-${{ env.KVER }}
+          name: a23-boot-${{ env.KVER }}
           path: artifacts/*
           retention-days: 90
