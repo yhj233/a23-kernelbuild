@@ -40,7 +40,8 @@ jobs:
           # 不是 Kconfig 选项，写 .config 无效。必须 patch 源码。
           # 写死 bootcmd：直接从 FAT p1 加载 dtb+zImage 并 bootz，绕过 distro boot 扫描
           # 键盘不可用、无法现场确认 SD 卡是 mmc 0 还是 1，所以两个设备号+分区号都探测
-          # bootargs 带 init=/bin/bash 直接进 root shell（rootfs 密码锁定无法登录）
+          # rootfs 已换成 Maemo Leste 桌面：正常启动 /sbin/init -> S02xorg -> hildon-desktop
+          # 不带 init=/bin/bash、不带 console=tty0/fbcon（让出 framebuffer 给 Xorg）
           # 用仓库里的独立脚本 patch（避开 YAML 缩进 / shell 转义问题）
           python3 ../build-repo/patch_bootcmd.py
           echo "=== patch 后确认 ==="

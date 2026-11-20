@@ -7,10 +7,12 @@ s = open(p).read()
 old = '#ifndef CONFIG_BOOTCOMMAND\n#define CONFIG_BOOTCOMMAND "run distro_bootcmd"\n#endif'
 
 # Try mmc 0:1 / 0:2 / 1:1 / 1:2 until zImage+dtb are found, then bootz.
-# init=/bin/bash drops straight into root shell (rootfs root password is locked).
+# rootfs is now Maemo Leste desktop: boot normal /sbin/init -> S02xorg -> hildon-desktop.
+# NO init=/bin/bash (that stopped at root shell).
+# NO console=tty0 / fbcon (framebuffer console would occupy fb0 and block Xorg).
+# Keep serial console only for debugging.
 bootcmd = (
-    'setenv bootargs console=tty0 console=ttyS0,115200 '
-    'root=/dev/mmcblk0p2 rootwait panic=10 fbcon=rotate:0 init=/bin/bash; '
+    'setenv bootargs root=/dev/mmcblk0p2 rootwait panic=10 console=ttyS0,115200; '
     'for dev in 0 1; do '
     'for part in 1 2; do '
     'if load mmc ${dev}:${part} 0x42000000 zImage; then '
