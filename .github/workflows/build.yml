@@ -1,0 +1,71 @@
+name: Build A23 mainline kernel (Lima GPU + FB console)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout build repo (config + boot.cmd)
+        uses: actions/checkout@v4
+        with:
+          path: build-repo
+
+      - name: Install cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            gcc-arm-linux-gnueabihf \
+            binutils-arm-linux-gnueabihf \
+            bc bison flex libssl-dev libelf-dev \
+            u-boot-tools device-tree-compiler
+
+      - name: Fetch mainline kernel v6.1 (shallow)
+        run: |
+          git clone --depth 1 --branch v6.1 \
+            https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux
+          echo "KVER=$(cd linux && make kernelversion)" >> $GITHUB_ENV
+
+      - name: Install config
+        run: |
+          cp build-repo/kernel.config linux/.config
+          cd linux
+          # 让新旧内核配置差异用默认值补齐，不交互式提问
+          make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
+          echo "=== 关键选项确认 ==="
+          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|VT_CONSOLE)=' .config || true
+
+      - name: Build zImage + A23 dtb
+        run: |
+          cd linux
+          make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage
+          make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- \
+            arch/arm/boot/dts/sun8i-a23-q8-tablet.dtb
+
+      - name: Generate boot.scr
+        run: |
+          mkimage -C none -A arm -T script -d build-repo/boot.cmd out-boot.scr
+          mv out-boot.scr boot.scr
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p artifacts
+          cp linux/arch/arm/boot/zImage artifacts/
+          cp linux/arch/arm/boot/dts/sun8i-a23-q8-tablet.dtb artifacts/
+          cp boot.scr artifacts/
+          cp linux/.config artifacts/kernel-final.config
+          ls -lh artifacts/
+          echo "=== zImage magic (期望 1f8b08 @ 0xe988 附近) ==="
+          xxd -l 64 artifacts/zImage
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: a23-kernel-${{ env.KVER }}
+          path: artifacts/*
+          retention-days: 90
