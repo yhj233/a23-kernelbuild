@@ -45,7 +45,7 @@ jobs:
           cd linux
           make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- zImage
           make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- \
-            arch/arm/boot/dts/sun8i-a23-q8-tablet.dtb
+            sun8i-a23-q8-tablet.dtb
 
       - name: Generate boot.scr
         run: |
