@@ -12,7 +12,7 @@ old = '#ifndef CONFIG_BOOTCOMMAND\n#define CONFIG_BOOTCOMMAND "run distro_bootcm
 # DIAGNOSTIC: console=tty0 added back so kernel+init output shows on screen (screen was
 #   blank with only a cursor, need to see where boot stalls). Xorg can still take over fb0.
 bootcmd = (
-    'setenv bootargs console=tty0 console=ttyS0,115200 '
+    'setenv bootargs console=tty0 console=ttyS0,115200 console=ttyGS0,115200 '
     'root=/dev/mmcblk0p2 rootwait panic=10 fbcon=rotate:0; '
     'for dev in 0 1; do '
     'for part in 1 2; do '
