@@ -95,6 +95,16 @@ jobs:
           echo "=== u-boot magic (期望 eGON.BT0) ==="
           xxd -s 32 -l 16 artifacts/u-boot-sunxi-with-spl.bin
 
+      - name: Build wifi driver modules
+        run: |
+          cd linux
+          make -j$(nproc) ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- modules
+          echo "=== wifi modules ==="
+          find drivers/net/wireless -name "*.ko" | head -20
+          mkdir -p ../artifacts/modules
+          find drivers/net/wireless -name "*.ko" -exec cp {} ../artifacts/modules/ \;
+          ls -lh ../artifacts/modules/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
