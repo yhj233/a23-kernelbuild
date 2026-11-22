@@ -63,9 +63,17 @@ jobs:
         run: |
           cp build-repo/kernel.config linux/.config
           cd linux
+          # r8188eu (staging) needs Wireless Extensions symbols
+          scripts/config --enable WIRELESS_EXT
+          scripts/config --enable CFG80211_WEXT
+          # zram compressed swap (built-in deps + module)
+          scripts/config --enable ZSMALLOC
+          scripts/config --module ZRAM
+          scripts/config --enable CRYPTO_LZ4
+          scripts/config --enable LZ4_COMPRESS
           make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
           echo "=== 关键选项确认 ==="
-          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|VT_CONSOLE)=' .config || true
+          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU)=' .config || true
 
       - name: Build zImage
         run: |
