@@ -66,9 +66,10 @@ jobs:
           # r8188eu (staging) needs Wireless Extensions symbols
           scripts/config --enable WIRELESS_EXT
           scripts/config --enable CFG80211_WEXT
-          # zram compressed swap (built-in deps + module)
+          # build wifi + zram fully into kernel (no runtime module deps)
           scripts/config --enable ZSMALLOC
-          scripts/config --module ZRAM
+          scripts/config --enable ZRAM
+          scripts/config --enable R8188EU
           scripts/config --enable CRYPTO_LZ4
           scripts/config --enable LZ4_COMPRESS
           make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
