@@ -72,9 +72,15 @@ jobs:
           scripts/config --enable R8188EU
           scripts/config --enable CRYPTO_LZ4
           scripts/config --enable LZ4_COMPRESS
+          # GPU: simpledrm provides a DRM KMS connector over U-Boot's simplefb,
+          # so Lima/GBM can be used by Xorg glamor. Disable fbdev simplefb to
+          # avoid probing the same simple-framebuffer device (simpledrm provides
+          # its own fbdev emulation via drm_fbdev_generic_setup for fbcon).
+          scripts/config --enable DRM_SIMPLEDRM
+          scripts/config --disable FB_SIMPLE
           make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
           echo "=== 关键选项确认 ==="
-          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU)=' .config || true
+          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|DRM_SIMPLEDRM|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU)=' .config || true
 
       - name: Build zImage
         run: |
