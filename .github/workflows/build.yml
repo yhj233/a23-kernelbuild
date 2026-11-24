@@ -78,7 +78,18 @@ jobs:
           # its own fbdev emulation via drm_fbdev_generic_setup for fbcon).
           scripts/config --enable DRM_SIMPLEDRM
           scripts/config --disable FB_SIMPLE
+          # Bake WiFi + touch firmware into zImage so rootfs-independent.
+          # Without FW_LOADER_USER_HELPER, kernel cannot load firmware from
+          # /lib/firmware at runtime -> WiFi/touch die on a bookworm-only root.
+          mkdir -p firmware/rtlwifi firmware/silead
+          cp ../build-repo/firmware/rtlwifi/rtl8188eufw.bin firmware/rtlwifi/
+          cp ../build-repo/firmware/silead/gsl1680-a082-q8-700.fw firmware/silead/
+          scripts/config --enable FW_LOADER
+          scripts/config --set-str EXTRA_FIRMWARE "rtlwifi/rtl8188eufw.bin silead/gsl1680-a082-q8-700.fw"
+          scripts/config --set-str EXTRA_FIRMWARE_DIR "firmware"
           make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
+          echo "=== firmware baked in ==="
+          grep -E '^CONFIG_(EXTRA_FIRMWARE|EXTRA_FIRMWARE_DIR|FW_LOADER)=' .config
           echo "=== 关键选项确认 ==="
           grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|DRM_SIMPLEDRM|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU)=' .config || true
 
