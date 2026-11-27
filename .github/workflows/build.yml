@@ -106,6 +106,14 @@ jobs:
           echo "=== dtb 里的 framebuffer 节点 ==="
           strings artifacts/sun8i-a23-q8-tablet.dtb | grep -iE 'framebuffer|simple-fb' || echo "(U-Boot dtb 运行时动态加 simple-framebuffer)"
 
+      # Stock q8 dtsi says 1024x600 / max-fingers = 1. This panel's firmware
+      # reports 0..969 / 0..627, so a 1024x600 axis range makes libinput scale
+      # the touch down and the right/bottom ~40 px (where the on-screen
+      # keyboard's Enter key sits) becomes unreachable. Also open up multi-touch.
+      - name: Patch touchscreen node (axis range + 5 fingers)
+        run: |
+          python3 build-repo/patch_dtb_touch.py artifacts/sun8i-a23-q8-tablet.dtb
+
       - name: Generate boot.scr
         run: |
           mkimage -C none -A arm -T script -d build-repo/boot.cmd artifacts/boot.scr
