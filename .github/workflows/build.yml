@@ -44,6 +44,11 @@ jobs:
           # 不带 init=/bin/bash、不带 console=tty0/fbcon（让出 framebuffer 给 Xorg）
           # 用仓库里的独立脚本 patch（避开 YAML 缩进 / shell 转义问题）
           python3 ../build-repo/patch_bootcmd.py
+          # BMA222E accelerometer sits on i2c1 (addr 0x19) but mainline's
+          # q8 tablet dts has no node for it.  U-Boot compiles THIS tree and
+          # its dtb is what the kernel boots with, so the node has to be
+          # added here (the kernel dts is not used on this board).
+          python3 ../build-repo/patch_uboot_dts.py
           echo "=== patch 后确认 ==="
           grep -n 'define CONFIG_BOOTCOMMAND' include/config_distro_bootcmd.h | head -2
           make -j$(nproc) CROSS_COMPILE=arm-linux-gnueabihf-
@@ -78,6 +83,12 @@ jobs:
           # its own fbdev emulation via drm_fbdev_generic_setup for fbcon).
           scripts/config --enable DRM_SIMPLEDRM
           scripts/config --disable FB_SIMPLE
+          # Accelerometer: Bosch BMA222E on i2c1 (chip id 0xF8), driven by the
+          # bmc150-accel core.  Built in so iio-sensor-proxy -> QtSensors can
+          # feed Lomiri's orientation sensor.
+          scripts/config --enable IIO
+          scripts/config --enable I2C
+          scripts/config --enable BMC150_ACCEL
           # Bake WiFi + touch firmware into zImage so rootfs-independent.
           # Without FW_LOADER_USER_HELPER, kernel cannot load firmware from
           # /lib/firmware at runtime -> WiFi/touch die on a bookworm-only root.
@@ -91,7 +102,7 @@ jobs:
           echo "=== firmware baked in ==="
           grep -E '^CONFIG_(EXTRA_FIRMWARE|EXTRA_FIRMWARE_DIR|FW_LOADER)=' .config
           echo "=== 关键选项确认 ==="
-          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|DRM_SIMPLEDRM|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU)=' .config || true
+          grep -E '^CONFIG_(FB|FB_SIMPLE|FRAMEBUFFER_CONSOLE|DRM_LIMA|DRM_SIMPLEDRM|VT_CONSOLE|WIRELESS_EXT|CFG80211_WEXT|ZRAM|ZSMALLOC|R8188EU|BMC150_ACCEL|IIO)=' .config || true
 
       - name: Build zImage
         run: |
